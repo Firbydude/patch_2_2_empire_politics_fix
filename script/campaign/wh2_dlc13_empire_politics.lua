@@ -36,6 +36,28 @@ local elector_treaties_to_disable = {
 	"break alliance"
 }
 
+-- These regions are considered part of an elector count's holdings per regions_to_region_groups_junctions_tables
+-- but are missing region return dilemmas in dilemmas_table.
+local region_keys_missing_return_dilemma = {
+	"wh3_main_combi_region_aarnau",
+	"wh3_main_combi_region_castle_drakenhof",
+	"wh3_main_combi_region_castle_templehof",
+	"wh3_main_combi_region_dotternbach",
+	"wh3_main_combi_region_eschen",
+	"wh3_main_combi_region_fort_oberstyre",
+	"wh3_main_combi_region_fort_soll",
+	"wh3_main_combi_region_gorssel",
+	"wh3_main_combi_region_gryphon_wood",
+	"wh3_main_combi_region_laurelorn_forest",
+	"wh3_main_combi_region_marienburg",
+	"wh3_main_combi_region_steingart",
+	"wh3_main_combi_region_swartzhafen",
+	"wh3_main_combi_region_the_black_pit",
+	"wh3_main_combi_region_ubersreik",
+	"wh3_main_combi_region_waldenhof",
+	"wh3_main_combi_region_wreckers_point"
+}
+
 local reinforcement_bundle = "wh3_main_bundle_instant_reinforcements_no_move_cost";
 
 local empire_political_invasion = {};
@@ -829,6 +851,11 @@ function empire_process_queued_dilemmas(faction)
 	local faction_key = faction:name();
 	local faction_cqi = faction:command_queue_index();
 	local dilemma_offered = false;
+    
+    -- Remove regions added to the queue that should not have been to fix save games.
+	for i = 1, #region_keys_missing_return_dilemma do
+		empire_remove_from_return_queue(region_keys_missing_return_dilemma[i]);
+	end
 	
 	-- Deal with the queue demand region return dilemmas
 	for i = 1, #empire_demand_return_queue do
@@ -1625,7 +1652,8 @@ function empire_region_occupied(context)
 			out.design("\tElector Key: "..tostring(elector_key));
 			
 			-- If this region has an associated elector key, then we know it should belong to an Elector
-			if elector_key then
+			-- Also check whether a return dilemma actually exists, since some are missing.
+			if elector_key and has_region_return_dilemma(region_key) then
 				local elector_faction_key = EMPIRE_ELECTOR_COUNTS[elector_key].faction_key;
 				local elector_faction = cm:model():world():faction_by_key(elector_faction_key);
 				local conquerer_key = conquerer:name();
@@ -1964,6 +1992,15 @@ function empire_war_declared(context)
 	end
 end
 
+function has_region_return_dilemma(region_key)
+	for i = 1, #region_keys_missing_return_dilemma do
+		if region_key == region_keys_missing_return_dilemma[i] then
+			return false;
+		end
+	end
+
+	return true;
+end
 
 function empire_remove_from_return_queue(region_key, faction_key)
 	local index = 1;
